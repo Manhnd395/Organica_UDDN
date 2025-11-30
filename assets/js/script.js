@@ -115,30 +115,41 @@ window.addEventListener('DOMContentLoaded', ()=>{
   requestAnimationFrame(()=>{ document.documentElement.classList.remove('page-enter'); });
 });
 
-// Intercept clicks for transitions and auth-required actions
+// Intercept clicks for auth-required actions first, then handle transitions
 document.addEventListener('click', async (ev)=>{
-  const btn = ev.target.closest('[data-requires-auth], a');
-  if(!btn) return;
-
-  // If element requests auth via data attribute
-  const needAuth = btn.closest('[data-requires-auth]') || (btn.dataset && btn.dataset.requiresAuth === 'true');
-  if(needAuth){
+  // 1) Priority: find nearest element that explicitly requests auth
+  const authEl = ev.target.closest('[data-requires-auth]');
+  if(authEl){
     const ok = await isAuthenticated();
     if(!ok){
       ev.preventDefault();
+      ev.stopPropagation();
       // Store intended action so login can redirect back
-      const href = (btn.getAttribute && btn.getAttribute('href')) || window.location.pathname;
+      const href = (authEl.getAttribute && authEl.getAttribute('href')) || window.location.pathname;
       sessionStorage.setItem('post_login_redirect', href);
+      // show a small toast to explain redirect
+      try{
+        const t = document.createElement('div');
+        t.className = 'auth-toast';
+        t.textContent = 'Bạn cần đăng nhập để thực hiện hành động này. Chuyển sang trang đăng nhập...';
+        Object.assign(t.style, { position: 'fixed', right: '20px', bottom: '100px', background: 'rgba(0,0,0,0.75)', color: '#fff', padding: '10px 14px', borderRadius: '8px', zIndex: 99999, fontSize: '13px' });
+        document.body.appendChild(t);
+        setTimeout(()=>{ t.remove(); }, 2200);
+      }catch(_e){}
       window.location.href = '/login.html?redirect=' + encodeURIComponent(href);
       return;
     }
-    // allow event to proceed for authenticated users
+    // authenticated -> allow default handler (e.g., wishlist add will run)
+    return;
   }
 
-  // Smooth transition for same-origin anchors (no target, no data-no-transition)
-  if(btn.tagName === 'A'){
-    const href = btn.getAttribute('href');
-    if(href && href.startsWith('/') && !btn.hasAttribute('target') && !btn.hasAttribute('data-no-transition')){
+  // 2) Smooth transition for same-origin anchors (no target, no data-no-transition)
+  const link = ev.target.closest('a');
+  if(link){
+    const href = link.getAttribute('href');
+    if(href && href.startsWith('/') && !link.hasAttribute('target') && !link.hasAttribute('data-no-transition')){
+      // Allow links that are fragment-only or javascript to proceed
+      if(href.startsWith('#') || href.startsWith('javascript:')) return;
       ev.preventDefault();
       document.documentElement.classList.add('page-exit');
       setTimeout(()=> window.location.href = href, 220);
