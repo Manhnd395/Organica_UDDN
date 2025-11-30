@@ -19,5 +19,5 @@ images:
 - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/organica-repo/organica-app:$COMMIT_SHA'
 
 options:
-  machineType: 'E2_HIGHCPU_8'  # Build nhanh hơn
+  machineType: 'N1_STANDARD_2'  # Build nhanh hơn
   logging: 'CLOUD_LOGGING_ONLY'
