@@ -1299,24 +1299,37 @@ app.post('/api/chat', async (req, res) => {
 
 // ==========================================
 
+
 if(!process.env.VERCEL){
-  // Local mode: start server normally
-  setupIndexesAndAdmin().then(()=>{
-    app.listen(port, () => {
-      // THAY THẾ console.log BẰNG logger.info
-      logger.info(`Organica server running at http://localhost:${port}`); 
-      if (keycloak) {
-        // THAY THẾ console.log BẰNG logger.info
-        logger.info('Keycloak realm:', process.env.KEYCLOAK_REALM, 'client:', process.env.KEYCLOAK_CLIENT_ID);
-        // THAY THẾ console.log BẰNG logger.info
-        logger.info('Login URL (Keycloak):', `${process.env.KEYCLOAK_BASE_URL}realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/auth`);
-      }
-    });
-  }).catch(err=>{ 
-    // THAY THẾ console.error BẰNG logger.error
-    logger.error('Failed to start server', err); 
-    process.exit(1); 
-});
+  // Start the HTTP server immediately so the container becomes healthy
+  const server = app.listen(port, () => {
+    logger.info(`Organica server running at http://localhost:${port}`);
+    if (keycloak) {
+      logger.info('Keycloak realm:', process.env.KEYCLOAK_REALM, 'client:', process.env.KEYCLOAK_CLIENT_ID);
+      logger.info('Login URL (Keycloak):', `${process.env.KEYCLOAK_BASE_URL}realms/${process.env.KEYCLOAK_REALM}/protocol/openid-connect/auth`);
+    }
+  });
+
+  // Run DB/index setup in background so startup is not blocked by transient DB issues
+  setupIndexesAndAdmin().catch(err => {
+    logger.error('SetupIndexesAndAdmin failed (non-fatal):', err && err.message ? err.message : err);
+  });
+
+  // Graceful shutdown
+  const shutdown = () => {
+    logger.info('Shutting down server...');
+    server.close(() => {
+      logger.info('HTTP server closed');
+      if (mongoClient && mongoClient.close) {
+        mongoClient.close(false).then(()=>process.exit(0)).catch(()=>process.exit(0));
+      } else {
+        process.exit(0);
+      }
+    });
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+
 } else {
   // Vercel serverless: prepare indexes eagerly (non-blocking for cold start
   // Cần sửa console.error trong khối này nếu bạn muốn deploy lên Vercel
