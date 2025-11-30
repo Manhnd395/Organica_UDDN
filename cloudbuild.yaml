@@ -1,22 +1,21 @@
 steps:
-# Bước 1: Build Docker image từ source code
+# Bước 1: Build Docker image
 - name: 'gcr.io/cloud-builders/docker'
   args:
   - 'build'
   - '-t'
-  - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/organica-repo/organica-app:$COMMIT_SHA'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/organica-repo-us/organica-app:$COMMIT_SHA'
   - '.'
 
-# Bước 2: Push image lên Artifact Registry
+# Bước 2: Push image
 - name: 'gcr.io/cloud-builders/docker'
   args:
   - 'push'
-  - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/organica-repo/organica-app:$COMMIT_SHA'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/organica-repo-us/organica-app:$COMMIT_SHA'
 
 images:
-- 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/organica-repo/organica-app:$COMMIT_SHA'
+- 'us-central1-docker.pkg.dev/$PROJECT_ID/organica-repo-us/organica-app:$COMMIT_SHA'
 
 options:
+  machineType: 'E2_HIGHCPU_8'   # OK ở us-central1, quota cao
   logging: 'CLOUD_LOGGING_ONLY'
-  pool:
-    name: 'projects/organica-479707/locations/asia-southeast1/workerPools/organica-private-pool'  
