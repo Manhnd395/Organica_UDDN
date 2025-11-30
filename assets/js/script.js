@@ -91,3 +91,57 @@ for (let i = 0; i < productThumbnails.length; i++) {
 
   });
 }
+
+
+/* ========= Page transition and auth-guard enhancements ========= */
+
+// Simple auth check: try local token first, fall back to cookie session
+async function isAuthenticated(){
+  try{
+    const at = localStorage.getItem('accessToken');
+    if(at){
+      const r = await fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + at } });
+      if(r.ok) return true;
+    }
+    // Try cookie-based session
+    const rc = await fetch('/api/me', { credentials: 'include' });
+    return rc.ok;
+  }catch(_e){ return false; }
+}
+
+// Fade-in on load
+window.addEventListener('DOMContentLoaded', ()=>{
+  document.documentElement.classList.add('page-enter');
+  requestAnimationFrame(()=>{ document.documentElement.classList.remove('page-enter'); });
+});
+
+// Intercept clicks for transitions and auth-required actions
+document.addEventListener('click', async (ev)=>{
+  const btn = ev.target.closest('[data-requires-auth], a');
+  if(!btn) return;
+
+  // If element requests auth via data attribute
+  const needAuth = btn.closest('[data-requires-auth]') || (btn.dataset && btn.dataset.requiresAuth === 'true');
+  if(needAuth){
+    const ok = await isAuthenticated();
+    if(!ok){
+      ev.preventDefault();
+      // Store intended action so login can redirect back
+      const href = (btn.getAttribute && btn.getAttribute('href')) || window.location.pathname;
+      sessionStorage.setItem('post_login_redirect', href);
+      window.location.href = '/login.html?redirect=' + encodeURIComponent(href);
+      return;
+    }
+    // allow event to proceed for authenticated users
+  }
+
+  // Smooth transition for same-origin anchors (no target, no data-no-transition)
+  if(btn.tagName === 'A'){
+    const href = btn.getAttribute('href');
+    if(href && href.startsWith('/') && !btn.hasAttribute('target') && !btn.hasAttribute('data-no-transition')){
+      ev.preventDefault();
+      document.documentElement.classList.add('page-exit');
+      setTimeout(()=> window.location.href = href, 220);
+    }
+  }
+});

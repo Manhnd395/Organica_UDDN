@@ -13,7 +13,7 @@
           <figure class="card-banner">
             <img src="${p.image}" width="189" height="189" loading="lazy" alt="${p.name}">
             <div class="btn-wrapper">
-              <button class="product-btn btn-add-to-wishlist" aria-label="Add to Whishlist" data-product-id="${p.id}">
+              <button class="product-btn btn-add-to-wishlist" aria-label="Add to Whishlist" data-product-id="${p.id}" data-requires-auth="true">
                 <ion-icon name="heart-outline"></ion-icon>
                 <div class="tooltip">Add to Whishlist</div>
               </button>
@@ -45,7 +45,7 @@
           <figure class="card-banner">
             <img src="${p.image}" width="100" height="100" loading="lazy" alt="${p.name}">
             <div class="btn-wrapper">
-              <button class="product-btn btn-add-to-wishlist" aria-label="Add to Whishlist" data-product-id="${p.id}">
+              <button class="product-btn btn-add-to-wishlist" aria-label="Add to Whishlist" data-product-id="${p.id}" data-requires-auth="true">
                 <ion-icon name="heart-outline"></ion-icon>
                 <div class="tooltip">Add to Whishlist</div>
               </button>

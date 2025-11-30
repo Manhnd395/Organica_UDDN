@@ -172,6 +172,22 @@ body {
   background-color: var(--white);
 }
 
+/* Page transition helpers */
+html.page-exit, body.page-exit {
+  transition: opacity 220ms var(--cubic-out), transform 220ms var(--cubic-out);
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+html.page-enter, body.page-enter {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+html, body {
+  transition: opacity 260ms var(--cubic-out), transform 260ms var(--cubic-out);
+}
+
 
 
 
