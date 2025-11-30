@@ -19,4 +19,4 @@ images:
 options:
   logging: 'CLOUD_LOGGING_ONLY'
   pool:
-    name: 'projects/organica-479707/locations/asia-southeast1/workerPools/organica-private-pool'   # Pool riêng, bỏ qua quota public
+    name: 'projects/organica-479707/locations/asia-southeast1/workerPools/organica-private-pool'  
