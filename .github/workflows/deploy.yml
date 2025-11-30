@@ -1,0 +1,58 @@
+﻿name: CI - Build & Deploy to Cloud Run
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: organica-479707
+      REGION: asia-southeast1
+      SERVICE: organica
+      IMAGE: gcr.io/organica-479707/organica:${{ github.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Create or update SecretManager secrets from GitHub secrets
+        shell: bash
+        run: |
+          set -e
+          PROJECT=$PROJECT_ID
+          SA=organica-run-sa@$PROJECT_ID.iam.gserviceaccount.com
+          for name in JWT_SECRET SESSION_SECRET REFRESH_TOKEN_SECRET MONGO_URL ADMIN_PASSWORD GOOGLE_CLIENT_SECRET KEYCLOAK_CLIENT_SECRET GOOGLE_CLIENT_ID; do
+            val="${{ secrets["$name"] }}"
+            if [ -z "$val" ]; then
+              echo "Skipping $name (no GitHub secret)."
+              continue
+            fi
+            if ! gcloud secrets describe "$name" --project="$PROJECT" >/dev/null 2>&1; then
+              gcloud secrets create "$name" --replication-policy="automatic" --project="$PROJECT"
+            fi
+            echo -n "$val" | gcloud secrets versions add "$name" --data-file=- --project="$PROJECT"
+            gcloud secrets add-iam-policy-binding "$name" --member="serviceAccount:$SA" --role="roles/secretmanager.secretAccessor" --project="$PROJECT" || true
+          done
+
+      - name: Build and push image
+        run: |
+          gcloud builds submit --tag $IMAGE --project=$PROJECT_ID
+
+      - name: Deploy to Cloud Run (map secrets)
+        run: |
+          gcloud run deploy ${SERVICE} \
+            --image $IMAGE \
+            --region ${REGION} \
+            --platform managed \
+            --allow-unauthenticated \
+            --service-account organica-run-sa@$PROJECT_ID.iam.gserviceaccount.com \
+            --update-secrets "JWT_SECRET=JWT_SECRET:latest,SESSION_SECRET=SESSION_SECRET:latest,REFRESH_TOKEN_SECRET=REFRESH_TOKEN_SECRET:latest,MONGO_URL=MONGO_URL:latest,ADMIN_PASSWORD=ADMIN_PASSWORD:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,KEYCLOAK_CLIENT_SECRET=KEYCLOAK_CLIENT_SECRET:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest" \
+            --project=$PROJECT_ID
