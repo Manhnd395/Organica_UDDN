@@ -3,7 +3,7 @@ resources:
 
 images:
   - name: ghcr.io/huyhoangTran05/organica
-    newTag: "latest" # will be updated by CI
+    newTag: "sha-latest" # will be updated by CI
 
 patchesStrategicMerge:
   - patch-replicas.yaml
