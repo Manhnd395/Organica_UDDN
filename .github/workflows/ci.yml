@@ -77,8 +77,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/organica:latest
-            ghcr.io/${{ github.repository }}/organica:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/organica:latest
+            ghcr.io/${{ github.repository_owner }}/organica:${{ github.sha }}
 
       - name: Update kustomization.yaml with new image tag
         run: |
@@ -90,7 +90,7 @@ jobs:
           
           if [ -f "$KUSTOMIZE_FILE" ]; then
             sed -i "s|newTag: .*|newTag: \"${NEW_TAG}\"|" "$KUSTOMIZE_FILE"
-            sed -i "s|name: gcr.io/.*/organica|name: ghcr.io/${{ github.repository }}/organica|" "$KUSTOMIZE_FILE"
+            sed -i "s|name: gcr.io/.*/organica|name: ghcr.io/${{ github.repository_owner }}/organica|" "$KUSTOMIZE_FILE"
             
             git add "$KUSTOMIZE_FILE"
             if git diff --staged --quiet; then

@@ -2,7 +2,7 @@ resources:
   - ../../base
 
 images:
-  - name: ghcr.io/huyhoangTran05/organica/organica
+  - name: ghcr.io/huyhoangTran05/organica
     newTag: "latest" # will be updated by CI
 
 patchesStrategicMerge:
