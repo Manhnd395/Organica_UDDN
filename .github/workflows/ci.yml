@@ -92,6 +92,53 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  deploy-secrets:
+    name: Deploy Secrets to Kubernetes
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
+          location: ${{ secrets.GKE_ZONE }}
+
+      - name: Create/Update Kubernetes Secrets
+        run: |
+          kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl create secret generic organica-secrets \
+            --namespace=production \
+            --from-literal=GOOGLE_CLIENT_ID='${{ secrets.GOOGLE_CLIENT_ID }}' \
+            --from-literal=GOOGLE_CLIENT_SECRET='${{ secrets.GOOGLE_CLIENT_SECRET }}' \
+            --from-literal=GEMINI_API_KEY='${{ secrets.GEMINI_API_KEY }}' \
+            --from-literal=MONGO_URL='${{ secrets.MONGO_URL }}' \
+            --from-literal=DB_NAME='organica' \
+            --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+            --from-literal=SESSION_SECRET='${{ secrets.SESSION_SECRET }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          echo "✅ Secrets deployed successfully!"
+
+  update-manifests:
+    name: Update Kustomize Manifests
+    needs: deploy-secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Update kustomization.yaml with new image tag
         env:
           REGISTRY: ghcr.io
