@@ -29,8 +29,13 @@ jobs:
           set -e
           PROJECT=$PROJECT_ID
           SA=organica-run-sa@$PROJECT_ID.iam.gserviceaccount.com
-          for name in JWT_SECRET SESSION_SECRET REFRESH_TOKEN_SECRET MONGO_URL ADMIN_PASSWORD GOOGLE_CLIENT_SECRET KEYCLOAK_CLIENT_SECRET GOOGLE_CLIENT_ID; do
-            val="${{ secrets["$name"] }}"
+          # GitHub Actions expressions cannot be dynamically indexed by a shell variable.
+          # Build parallel arrays of names and values and iterate by index instead.
+          names=(JWT_SECRET SESSION_SECRET REFRESH_TOKEN_SECRET MONGO_URL ADMIN_PASSWORD GOOGLE_CLIENT_SECRET KEYCLOAK_CLIENT_SECRET GOOGLE_CLIENT_ID)
+          values=("${{ secrets.JWT_SECRET }}" "${{ secrets.SESSION_SECRET }}" "${{ secrets.REFRESH_TOKEN_SECRET }}" "${{ secrets.MONGO_URL }}" "${{ secrets.ADMIN_PASSWORD }}" "${{ secrets.GOOGLE_CLIENT_SECRET }}" "${{ secrets.KEYCLOAK_CLIENT_SECRET }}" "${{ secrets.GOOGLE_CLIENT_ID }}")
+          for i in "${!names[@]}"; do
+            name="${names[$i]}"
+            val="${values[$i]}"
             if [ -z "$val" ]; then
               echo "Skipping $name (no GitHub secret)."
               continue
@@ -38,7 +43,7 @@ jobs:
             if ! gcloud secrets describe "$name" --project="$PROJECT" >/dev/null 2>&1; then
               gcloud secrets create "$name" --replication-policy="automatic" --project="$PROJECT"
             fi
-            echo -n "$val" | gcloud secrets versions add "$name" --data-file=- --project="$PROJECT"
+            printf '%s' "$val" | gcloud secrets versions add "$name" --data-file=- --project="$PROJECT"
             gcloud secrets add-iam-policy-binding "$name" --member="serviceAccount:$SA" --role="roles/secretmanager.secretAccessor" --project="$PROJECT" || true
           done
 
