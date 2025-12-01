@@ -4,7 +4,7 @@ resources:
 
 images:
   - name: ghcr.io/Manhnd395/organica
-    newTag: "sha-afb54b9ecee14a3a3e479e37ac782d3410ad6473"
+    newTag: "sha-db978a80f42104961ecff0ba71fff09dee03edc8"
 
 patchesStrategicMerge:
   - patch-replicas.yaml
