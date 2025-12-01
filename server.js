@@ -135,7 +135,15 @@ const REFRESH_TOKEN_PEPPER = process.env.REFRESH_TOKEN_PEPPER || 'pepper';
 const ADMIN_SIGNUP_CODE = process.env.ADMIN_SIGNUP_CODE || '';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/auth/google/callback';
+
+// Dynamic redirect URI based on request host for production deployment
+function getGoogleRedirectUri(req) {
+  // Use env var if set, otherwise build dynamically from request
+  if (process.env.GOOGLE_REDIRECT_URI) {
+    return process.env.GOOGLE_REDIRECT_URI;
+  }
+  return `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+}
 
 function normalizeEmail(email){ return String(email||'').trim().toLowerCase(); }
 
@@ -1031,7 +1039,7 @@ app.get('/api/auth/google', (req, res) => {
   req.session.oauthState = { state, nonce, redirect, createdAt: Date.now() };
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: GOOGLE_REDIRECT_URI,
+    redirect_uri: getGoogleRedirectUri(req),
     response_type: 'code',
     scope: 'openid email profile',
     state,
@@ -1057,7 +1065,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
         code: String(code),
         client_id: GOOGLE_CLIENT_ID,
         client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri: GOOGLE_REDIRECT_URI,
+        redirect_uri: getGoogleRedirectUri(req),
         grant_type: 'authorization_code'
       })
     });
