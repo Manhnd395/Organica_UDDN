@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/HuyHoangTran05/Organica.git'
+    repoURL: 'https://github.com/Manhnd395/Organica_UDDN.git'
     path: k8s/overlays/production
     targetRevision: HEAD
   destination:

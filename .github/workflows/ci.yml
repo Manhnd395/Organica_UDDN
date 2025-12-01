@@ -1,4 +1,4 @@
-name: CI - Test, Build & Promote Image
+name: CI - Test, Build & Update Manifests
 
 on:
   push:
@@ -17,13 +17,13 @@ permissions:
 
 jobs:
   test:
-    name: Run tests (Node)
+    name: Run tests
     runs-on: ubuntu-latest
     services:
       mongo:
         image: mongo:6
         ports: ["27017:27017"]
-        options: >-
+        options: >
           --health-cmd="mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
           --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
@@ -51,14 +51,15 @@ jobs:
           fi
 
   build-and-push:
-    name: Build, push image to GHCR and update kustomize
+    name: Build and push to GHCR
     needs: test
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -72,32 +73,33 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}/organica:${{ github.sha }}
+          tags: |
+            ghcr.io/${{ github.repository }}/organica:latest
+            ghcr.io/${{ github.repository }}/organica:${{ github.sha }}
 
-      - name: Update kustomize overlay with new tag
-        env:
-          NEW_TAG: ${{ github.sha }}
+      - name: Update kustomization.yaml with new image tag
         run: |
-          set -e
-          KUSTOMIZE_FILE=k8s/overlays/production/kustomization.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          KUSTOMIZE_FILE="k8s/overlays/production/kustomization.yaml"
+          NEW_TAG="${{ github.sha }}"
+          
           if [ -f "$KUSTOMIZE_FILE" ]; then
-            # replace existing newTag or add it under images block if needed
-            if grep -q "newTag:" $KUSTOMIZE_FILE; then
-              sed -i "s|newTag: \".*\"|newTag: \"${NEW_TAG}\"|" "$KUSTOMIZE_FILE" || true
-            else
-              # naive append under images block
-              awk '/images:/ {print; getline; print; print "  - name: ghcr.io/'"${{ github.repository }}"'/organica"; print "    newTag: \"'"${NEW_TAG}"'\""; next}1' $KUSTOMIZE_FILE > /tmp/k || true
-              mv /tmp/k $KUSTOMIZE_FILE || true
-            fi
+            sed -i "s|newTag: .*|newTag: \"${NEW_TAG}\"|" "$KUSTOMIZE_FILE"
+            sed -i "s|name: gcr.io/.*/organica|name: ghcr.io/${{ github.repository }}/organica|" "$KUSTOMIZE_FILE"
+            
             git add "$KUSTOMIZE_FILE"
-            git commit -m "ci: bump image to ${NEW_TAG}" || echo "no changes to commit"
-            git push origin HEAD:main
+            if git diff --staged --quiet; then
+              echo "No changes to commit"
+            else
+              git commit -m "ci: update image tag to ${NEW_TAG}"
+              git push
+            fi
           else
-            echo "No kustomize overlay found at $KUSTOMIZE_FILE; skipping manifest update"
+            echo "Kustomize file not found: $KUSTOMIZE_FILE"
+            exit 1
           fi
-name: CI - Build & Push Docker Image
-
-on:
   push:
     branches: [ main ]
   pull_request:
