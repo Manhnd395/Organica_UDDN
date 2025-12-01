@@ -1125,11 +1125,9 @@ app.post('/api/chat', async (req, res) => {
       `- Tên: ${p.name}, Giá: $${p.price}, Danh mục: ${p.categorySlug}`
     ).join('\n');
 
-    // Cấu hình AI
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'YOUR_API_KEY_HERE');
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash"});
-
-    const prompt = `
+    // Cấu hình AI
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'YOUR_API_KEY_HERE');
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash"});    const prompt = `
       Bạn là trợ lý ảo AI của cửa hàng thực phẩm sạch Organica.
       Dưới đây là danh sách sản phẩm cửa hàng đang bán:
       ${productListText}
@@ -1149,13 +1147,21 @@ app.post('/api/chat', async (req, res) => {
 
     res.json({ reply: text });
 
-  } catch (err) {
-    logger.error('Chat AI Error:', err); // Sử dụng logger.error
-    res.status(500).json({ error: 'AI đang bận, thử lại sau nhé!' });
-  }
-});
-
-// Endpoint Metrics (Thêm dòng này ngay sau Chatbot)
+  } catch (err) {
+    console.error('Chat AI Error:', err.message || err);
+    
+    // Log chi tiết lỗi để debug  
+    if (err.status === 400) {
+      return res.status(400).json({ error: 'Yêu cầu không hợp lệ. Vui lòng thử lại!' });
+    } else if (err.status === 401) {
+      return res.status(500).json({ error: 'Lỗi xác thực API. Vui lòng liên hệ admin!' });
+    } else if (err.status === 429) {
+      return res.status(429).json({ error: 'Quá nhiều yêu cầu. Vui lòng chờ một chút!' });
+    }
+    
+    res.status(500).json({ error: 'AI đang bận, thử lại sau nhé!' });
+  }
+});// Endpoint Metrics (Thêm dòng này ngay sau Chatbot)
 app.get('/api/metrics', async (req, res) => {
     res.set('Content-Type', register.contentType);
     res.end(await register.metrics());
@@ -1247,56 +1253,6 @@ async function setupIndexesAndAdmin(){
 
 // ==========================================
 // THÊM ĐOẠN NÀY VÀO SERVER.JS (Gần cuối file)
-// ==========================================
-
-// 1. Import thư viện (Thêm dòng này lên đầu file server.js cùng các dòng require khác)
-
-// 2. Thêm API Chat (Dán đoạn này vào trước dòng 'if(!process.env.VERCEL)...')
-app.post('/api/chat', async (req, res) => {
-  try {
-    const { message } = req.body;
-    if (!message) return res.status(400).json({ error: 'Message required' });
-
-    // Lấy danh sách sản phẩm từ DB để Gemini biết mình đang bán gì
-    await connectMongo();
-    const products = await db.collection('products').find({ status: 'active' }).toArray();
-    
-    // Tạo ngữ cảnh (Context) sản phẩm cho AI
-    const productListText = products.map(p => 
-      `- Tên: ${p.name}, Giá: $${p.price}, Danh mục: ${p.categorySlug}`
-    ).join('\n');
-
-    // Cấu hình AI
-    // LƯU Ý: Bạn cần thêm GEMINI_API_KEY vào file .env nhé
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'YOUR_API_KEY_HERE');
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash"});
-
-    const prompt = `
-      Bạn là trợ lý ảo AI của cửa hàng thực phẩm sạch Organica.
-      Dưới đây là danh sách sản phẩm cửa hàng đang bán:
-      ${productListText}
-
-      Quy tắc trả lời:
-      1. Chỉ tư vấn dựa trên danh sách sản phẩm trên.
-      2. Nếu khách hỏi về bệnh (ví dụ: đau dạ dày, tiểu đường), hãy tư vấn các loại rau củ quả phù hợp có trong danh sách và giải thích công dụng dinh dưỡng.
-      3. Giọng điệu thân thiện, ngắn gọn, có ích.
-      4. Nếu khách hỏi sản phẩm không có trong danh sách, hãy khéo léo bảo cửa hàng chưa bán.
-
-      Câu hỏi của khách: "${message}"
-    `;
-
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-
-    res.json({ reply: text });
-
-  } catch (err) {
-    console.error('Chat AI Error:', err);
-    res.status(500).json({ error: 'AI đang bận, thử lại sau nhé!' });
-  }
-});
-
 // ==========================================
 
 
