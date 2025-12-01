@@ -4,8 +4,9 @@ resources:
 
 images:
   - name: ghcr.io/huyhoangTran05/organica
-    newTag: "sha-768c00cb4ba8fb698bd2deab3bce31db25538746"
+    newTag: "sha-b25fcae4ec52961ef2ee58720f2cc480f3e8e3fe"
 
 patchesStrategicMerge:
   - patch-replicas.yaml
+  - patch-env.yaml
   - patch-env.yaml
