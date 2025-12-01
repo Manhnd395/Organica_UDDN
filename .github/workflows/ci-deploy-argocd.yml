@@ -1,0 +1,41 @@
+name: CI Build & Update Kustomize (for ArgoCD)
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Configure Docker to use gcloud
+        run: |
+          gcloud auth configure-docker --quiet
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE=gcr.io/${{ secrets.GCP_PROJECT_ID }}/organica:${{ github.sha }}
+          docker build -t $IMAGE .
+          docker push $IMAGE
+
+      - name: Update kustomize tag
+        run: |
+          IMAGE=gcr.io/${{ secrets.GCP_PROJECT_ID }}/organica
+          NEW_TAG=${{ github.sha }}
+          sed -i "s|newTag: \"REPLACE_ME\"|newTag: \"${NEW_TAG}\"|" k8s/overlays/production/kustomization.yaml
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add k8s/overlays/production/kustomization.yaml
+          git commit -m "ci: update image tag to ${{ github.sha }}"
+          git push

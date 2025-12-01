@@ -1,0 +1,9 @@
+resources:
+  - ../../base
+
+images:
+  - name: gcr.io/PROJECT_ID/organica
+    newTag: "REPLACE_ME" # set to your desired tag (e.g. v1.2.3 or latest)
+
+patchesStrategicMerge:
+  - patch-replicas.yaml
