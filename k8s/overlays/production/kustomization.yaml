@@ -2,8 +2,8 @@ resources:
   - ../../base
 
 images:
-  - name: ghcr.io/huyhoangTran05/organica
-    newTag: "sha-latest" # will be updated by CI
+  - name: ghcr.io/Manhnd395/organica
+    newTag: "sha-768c00cb4ba8fb698bd2deab3bce31db25538746"
 
 patchesStrategicMerge:
   - patch-replicas.yaml
