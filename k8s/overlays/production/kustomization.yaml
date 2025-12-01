@@ -3,8 +3,8 @@ resources:
   - loadbalancer.yaml
 
 images:
-  - name: ghcr.io/huyhoangTran05/organica
-    newTag: "sha-b25fcae4ec52961ef2ee58720f2cc480f3e8e3fe"
+  - name: ghcr.io/Manhnd395/organica
+    newTag: "sha-afb54b9ecee14a3a3e479e37ac782d3410ad6473"
 
 patchesStrategicMerge:
   - patch-replicas.yaml
